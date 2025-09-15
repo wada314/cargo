@@ -2296,20 +2296,16 @@ fn detailed_dep_to_dependency<P: ResolveToPath + Clone>(
         orig.lib.unwrap_or(false),
         orig.target.as_deref(),
     ) {
-        if manifest_ctx.gctx.cli_unstable().bindeps {
-            let artifact = Artifact::parse(&artifact.0, is_lib, target)?;
-            if dep.kind() != DepKind::Build
-                && artifact.target() == Some(ArtifactTarget::BuildDependencyAssumeTarget)
-            {
-                bail!(
-                    r#"`target = "target"` in normal- or dev-dependencies has no effect ({})"#,
-                    name_in_toml
-                );
-            }
-            dep.set_artifact(artifact)
-        } else {
-            bail!("`artifact = …` requires `-Z bindeps` ({})", name_in_toml);
+        let artifact = Artifact::parse(&artifact.0, is_lib, target)?;
+        if dep.kind() != DepKind::Build
+            && artifact.target() == Some(ArtifactTarget::BuildDependencyAssumeTarget)
+        {
+            bail!(
+                r#"`target = "target"` in normal- or dev-dependencies has no effect ({})"#,
+                name_in_toml
+            );
         }
+        dep.set_artifact(artifact)
     } else if orig.lib.is_some() || orig.target.is_some() {
         for (is_set, specifier) in [
             (orig.lib.is_some(), "lib"),

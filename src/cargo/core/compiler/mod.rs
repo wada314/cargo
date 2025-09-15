@@ -65,7 +65,7 @@ use std::io::{BufRead, BufWriter, Write};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
-use anyhow::{Context as _, Error};
+use anyhow::{Context as _, Error, bail};
 use lazycell::LazyCell;
 use tracing::{debug, instrument, trace};
 
@@ -180,6 +180,23 @@ fn compile<'gctx>(
     let build_plan = bcx.build_config.build_plan;
     if !build_runner.compiled.insert(unit.clone()) {
         return Ok(());
+    }
+
+    let dependencies = build_runner.unit_deps(unit);
+    let allow_artifacts = bcx.gctx.cli_unstable().bindeps;
+    if !allow_artifacts {
+        dependencies
+            .iter()
+            .map(|dep| {
+                if dep.unit.artifact.is_true() {
+                    bail!(
+                        "`artifact = …` requires `-Z bindeps` ({})",
+                        dep.unit.pkg.name()
+                    );
+                }
+                Ok(())
+            })
+            .collect::<CargoResult<()>>()?;
     }
 
     // If we are in `--compile-time-deps` and the given unit is not a compile time

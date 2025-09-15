@@ -179,20 +179,48 @@ fn build_without_nightly_aborts_with_error() {
                 bar = { path = "bar/", artifact = "bin" }
             "#,
         )
-        .file("src/lib.rs", "extern crate bar;")
+        .file(
+            "src/lib.rs",
+            "extern crate bar; const ENV: &str = env!(\"CARGO_BIN_FILE_BAR\");",
+        )
         .file("bar/Cargo.toml", &basic_manifest("bar", "0.0.1"))
-        .file("bar/src/lib.rs", "")
+        .file("bar/src/main.rs", "fn main() {}")
         .build();
     p.cargo("check")
         .with_status(101)
         .with_stderr_data(str![[r#"
-[ERROR] failed to parse manifest at `[ROOT]/foo/Cargo.toml`
-
-Caused by:
-  `artifact = …` requires `-Z bindeps` (bar)
+[LOCKING] 1 package to latest compatible version
+[ERROR] `artifact = …` requires `-Z bindeps` (bar)
 
 "#]])
         .run();
+}
+
+#[cargo_test]
+fn build_without_nightly_but_dendency_is_disabled_by_feature() {
+    let p = project()
+        .file(
+            "Cargo.toml",
+            r#"
+                [package]
+                name = "foo"
+                version = "0.0.0"
+                edition = "2015"
+                authors = []
+                resolver = "2"
+
+                [dependencies]
+                bar = { path = "bar/", artifact = "bin", optional = true }
+
+                [features]
+                default = []
+            "#,
+        )
+        .file("src/lib.rs", "")
+        .file("bar/Cargo.toml", &basic_manifest("bar", "0.0.1"))
+        .file("bar/src/main.rs", "fn main() {}")
+        .build();
+    p.cargo("check").with_status(0).run();
 }
 
 #[cargo_test]
